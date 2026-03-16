@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TemplateFinder</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;background:#0e0f13;font-family:'DM Mono','Fira Mono','Courier New',monospace;color:#e8e4db}
+  ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0e0f13}::-webkit-scrollbar-thumb{background:#2a2d35;border-radius:3px}
+
+  /* ── SETUP SCREEN ── */
+  #setup-screen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .setup-box{
+    background:#14161c;border:1px solid #2a2d35;border-radius:20px;
+    padding:40px 36px;width:100%;max-width:500px;
+  }
+  .setup-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+  .setup-logo svg{color:#f0a500}
+  .setup-logo span{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#fff}
+  .setup-box h2{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#fff;margin-bottom:8px}
+  .setup-box p{color:#888;font-size:13px;line-height:1.7;margin-bottom:24px}
+  .setup-steps{background:#0e0f13;border:1px solid #1e2028;border-radius:10px;padding:18px 20px;margin-bottom:24px}
+  .setup-steps ol{padding-left:18px;display:flex;flex-direction:column;gap:10px}
+  .setup-steps li{font-size:12px;color:#aaa;line-height:1.6}
+  .setup-steps a{color:#f0a500;text-decoration:none}
+  .setup-steps a:hover{text-decoration:underline}
+  .setup-steps code{background:#1e2028;padding:1px 6px;border-radius:4px;font-size:11px;color:#e8e4db}
+  .setup-label{display:block;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+  .setup-input{
+    width:100%;background:#0e0f13;border:1px solid #2a2d35;border-radius:8px;
+    padding:11px 14px;color:#e8e4db;font-size:13px;font-family:inherit;outline:none;
+    transition:border-color .15s;margin-bottom:16px
+  }
+  .setup-input:focus{border-color:#f0a500}
+  .setup-error{color:#e05c5c;font-size:12px;margin-bottom:12px;display:none}
+  .setup-btn{
+    width:100%;background:#f0a500;color:#0e0f13;border:none;border-radius:9px;
+    padding:13px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;
+    transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px
+  }
+  .setup-btn:hover{background:#d99400}
+  .setup-note{font-size:11px;color:#555;margin-top:14px;text-align:center}
+
+  /* ── APP ── */
+  #app-screen{display:none}
+  header{
+    border-bottom:1px solid #1e2028;padding:0 32px;height:64px;
+    display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;background:#0e0f13;z-index:10
+  }
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo-icon{color:#f0a500;display:flex}
+  .logo-title{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;letter-spacing:-.5px;color:#fff}
+  #count-badge{background:#1e2028;color:#888;font-size:11px;padding:2px 8px;border-radius:4px;margin-left:4px}
+  .header-right{display:flex;align-items:center;gap:10px}
+  .sync-status{font-size:11px;color:#555;display:flex;align-items:center;gap:5px}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:#555;transition:background .3s}
+  .sync-dot.ok{background:#2ecc71}
+  .sync-dot.syncing{background:#f0a500;animation:pulse .8s infinite}
+  .sync-dot.err{background:#e05c5c}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .settings-btn{
+    background:#1e2028;border:1px solid #2a2d35;border-radius:7px;
+    color:#666;padding:7px 8px;cursor:pointer;display:flex;transition:color .15s
+  }
+  .settings-btn:hover{color:#f0a500}
+  .add-btn{
+    display:flex;align-items:center;gap:8px;
+    background:#f0a500;color:#0e0f13;border:none;border-radius:8px;
+    padding:9px 18px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;
+    transition:background .15s,box-shadow .15s
+  }
+  .add-btn:hover{background:#d99400;box-shadow:0 4px 20px rgba(240,165,0,.35)}
+  main{max-width:960px;margin:0 auto;padding:36px 24px}
+
+  /* Search */
+  .search-wrap{position:relative;margin-bottom:28px}
+  .search-wrap .si{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#555;transition:color .15s;pointer-events:none}
+  .search-wrap:focus-within .si{color:#f0a500}
+  #search-input{
+    width:100%;background:#14161c;border:1px solid #1e2028;border-radius:10px;
+    padding:14px 40px 14px 48px;color:#e8e4db;font-size:14px;font-family:inherit;
+    outline:none;transition:border-color .15s
+  }
+  #search-input:focus{border-color:#f0a500}
+  #search-clear{
+    position:absolute;right:14px;top:50%;transform:translateY(-50%);
+    background:none;border:none;color:#555;cursor:pointer;padding:4px;display:none
+  }
+
+  /* Category pills */
+  #cat-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:32px}
+  .cat-pill{
+    background:#14161c;color:#aaa;border:1px solid #1e2028;border-radius:6px;
+    padding:6px 14px;font-size:12px;font-family:inherit;cursor:pointer;transition:background .15s,color .15s
+  }
+  .cat-pill:hover{background:#2a2d35}
+  .cat-pill.active{background:#f0a500;color:#0e0f13;border-color:#f0a500;font-weight:500}
+
+  /* Grid */
+  #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .tmpl-card{
+    background:#14161c;border:1px solid #1e2028;border-radius:12px;
+    padding:20px;display:flex;flex-direction:column;gap:12px;
+    cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s,background .18s;position:relative
+  }
+  .tmpl-card:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(240,165,0,.18);border-color:#f0a500;background:#191b23}
+  .tmpl-card:hover .card-arrow{opacity:1;transform:translateX(0)}
+  .tmpl-card:hover .card-url{color:#f0a500}
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .cat-badge{
+    background:rgba(240,165,0,.15);color:#f0a500;font-size:13px;text-transform:uppercase;
+    letter-spacing:.06em;padding:6px 14px;border-radius:8px;font-weight:600;
+    border:1px solid rgba(240,165,0,.3)
+  }
+  .card-actions{display:flex;gap:4px;flex-shrink:0}
+  .icon-btn{
+    background:#1e2028;border:none;border-radius:6px;
+    color:#666;padding:6px 7px;display:flex;cursor:pointer;transition:color .15s
+  }
+  .icon-btn:hover{color:#f0a500}
+  .card-mid{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .card-name{font-size:15px;font-weight:500;color:#fff;line-height:1.4}
+  .card-arrow{
+    color:#f0a500;opacity:0;transform:translateX(-6px);
+    transition:opacity .18s,transform .18s;flex-shrink:0
+  }
+  .card-url{font-size:11px;color:#3a3d45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .18s}
+
+  #loading-state{text-align:center;color:#555;padding-top:80px;font-size:14px}
+  #empty{text-align:center;padding-top:80px;display:none}
+  #empty .emoji{font-size:40px;margin-bottom:16px}
+  #empty p{color:#555;font-size:14px}
+
+  /* Overlays / Modals */
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    animation:fadeIn .2s ease
+  }
+  .modal{
+    background:#14161c;border:1px solid #2a2d35;border-radius:16px;
+    padding:32px;width:100%;max-width:480px;animation:slideUp .22s ease
+  }
+  .modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+  .modal-title{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#fff}
+  .close-btn{background:none;border:none;color:#555;cursor:pointer;padding:4px}
+  .close-btn:hover{color:#aaa}
+  .form-fields{display:flex;flex-direction:column;gap:16px}
+  .form-group label{display:block;font-size:11px;color:#888;margin-bottom:7px;text-transform:uppercase;letter-spacing:.08em}
+  .form-group input{
+    width:100%;background:#0e0f13;border:1px solid #2a2d35;border-radius:8px;
+    padding:11px 14px;color:#e8e4db;font-size:13px;font-family:inherit;
+    outline:none;transition:border-color .15s
+  }
+  .form-group input:focus{border-color:#f0a500}
+  #form-error{color:#e05c5c;font-size:12px;display:none}
+  .submit-btn{
+    background:#f0a500;color:#0e0f13;border:none;border-radius:9px;
+    padding:13px;font-family:inherit;font-size:14px;font-weight:500;
+    cursor:pointer;width:100%;transition:background .15s;
+    display:flex;align-items:center;justify-content:center;gap:8px
+  }
+  .submit-btn:hover{background:#d99400}
+  .del-modal{max-width:380px;text-align:center}
+  .del-emoji{font-size:32px;margin-bottom:12px}
+  .del-title{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;margin-bottom:8px}
+  .del-msg{color:#888;font-size:13px;margin-bottom:24px}
+  .del-actions{display:flex;gap:10px}
+  .cancel-btn{flex:1;background:#1e2028;border:1px solid #2a2d35;border-radius:8px;padding:11px;color:#aaa;font-family:inherit;font-size:13px;cursor:pointer}
+  .confirm-del{flex:1;background:#c0392b;border:none;border-radius:8px;padding:11px;color:#fff;font-family:inherit;font-size:13px;cursor:pointer}
+
+  /* Toast */
+  #toast{
+    position:fixed;bottom:28px;right:28px;color:#fff;border-radius:9px;padding:12px 20px;
+    font-size:13px;font-family:inherit;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.4);
+    display:none;animation:toastIn .25s ease
+  }
+
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+  .spinner{
+    width:16px;height:16px;border:2px solid rgba(14,15,19,.4);
+    border-top-color:#0e0f13;border-radius:50%;animation:spin .6s linear infinite
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ══════════ SETUP SCREEN ══════════ -->
+<div id="setup-screen" style="display:none">
+  <div class="setup-box">
+    <div class="setup-logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>TemplateFinder</span>
+    </div>
+    <h2>Connect Cloud Storage</h2>
+    <p>Your templates will sync across <strong style="color:#e8e4db">any device</strong> using a free JSONBin account. Set it up once — works everywhere.</p>
+
+    <div class="setup-steps">
+      <ol>
+        <li>Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> and create a <strong style="color:#e8e4db">free account</strong></li>
+        <li>After login, click your profile → <code>API Keys</code> → copy your <code>Master Key</code></li>
+        <li>Paste it below and click <strong style="color:#e8e4db">Connect</strong> — that's it!</li>
+      </ol>
+    </div>
+
+    <label class="setup-label" for="api-key-input">Your JSONBin Master Key</label>
+    <input class="setup-input" id="api-key-input" type="password" placeholder="$2a$10$…" autocomplete="off"/>
+    <div class="setup-error" id="setup-error"></div>
+    <button class="setup-btn" id="connect-btn" onclick="connectBin()">
+      Connect &amp; Start
+    </button>
+    <p class="setup-note">Your key is stored only in this browser. Data is private to your account.</p>
+  </div>
+</div>
+
+<!-- ══════════ APP SCREEN ══════════ -->
+<div id="app-screen">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <span class="logo-title">TemplateFinder</span>
+      <span id="count-badge">0 templates</span>
+    </div>
+    <div class="header-right">
+      <div class="sync-status">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-label">Synced</span>
+      </div>
+      <button class="settings-btn" style="display:none" onclick="showSettings()" title="Settings / Change API Key">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button class="add-btn" onclick="openForm()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Template
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="search-wrap">
+      <div class="si"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+      <input id="search-input" type="text" placeholder="Search templates by name or category…" oninput="onSearch(this.value)"/>
+      <button id="search-clear" onclick="clearSearch()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="cat-pills"></div>
+    <div id="loading-state">Loading your templates…</div>
+    <div id="grid"></div>
+    <div id="empty"><div class="emoji">📂</div><p id="empty-msg">No templates yet. Add your first one!</p></div>
+  </main>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="form-overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeForm()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <h2 class="modal-title" id="form-title">Add Template</h2>
+      <button class="close-btn" onclick="closeForm()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="form-fields">
+      <div class="form-group"><label>Template Name</label><input id="f-name" type="text" placeholder="e.g. Invoice Template"/></div>
+      <div class="form-group"><label>Category *</label><input id="f-category" type="text" placeholder="e.g. Finance, HR, Legal…" list="cat-dl"/><datalist id="cat-dl"></datalist></div>
+      <div class="form-group"><label>Template URL / Link *</label><input id="f-url" type="text" placeholder="https://…"/></div>
+      <div id="form-error"></div>
+      <button class="submit-btn" id="submit-btn" onclick="handleSubmit()">Add Template</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div id="del-overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeDelete()">
+  <div class="modal del-modal" onclick="event.stopPropagation()">
+    <div class="del-emoji">🗑️</div>
+    <div class="del-title">Delete Template?</div>
+    <div class="del-msg">This action cannot be undone.</div>
+    <div class="del-actions">
+      <button class="cancel-btn" onclick="closeDelete()">Cancel</button>
+      <button class="confirm-del" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeSettings()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:420px">
+    <div class="modal-hdr">
+      <h2 class="modal-title">Settings</h2>
+      <button class="close-btn" onclick="closeSettings()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="form-group">
+        <label>JSONBin Master Key</label>
+        <input id="s-apikey" type="password" style="width:100%;background:#0e0f13;border:1px solid #2a2d35;border-radius:8px;padding:11px 14px;color:#e8e4db;font-size:13px;font-family:inherit;outline:none" placeholder="$2a$10$…"/>
+      </div>
+      <div style="color:#888;font-size:12px;line-height:1.6">Changing the key will disconnect from the current bin. A new bin will be created automatically on the new account.</div>
+      <button class="submit-btn" onclick="saveSettings()">Save &amp; Reconnect</button>
+      <button onclick="disconnectAccount()" style="background:none;border:1px solid #c0392b;border-radius:9px;padding:11px;color:#e05c5c;font-family:inherit;font-size:13px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(192,57,43,.1)'" onmouseout="this.style.background='none'">Disconnect &amp; Reset</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
+const LS_KEY = 'tf_apikey';
+const LS_BIN   = 'tf_binid';
+
+let templates  = [];
+let activeCategory = 'All';
+let searchQuery    = '';
+let editingId      = null;
+let deleteTargetId = null;
+let toastTimer     = null;
+let apiKey = '$2a$10$tAmPEwelV2gYFK2rOA0Utez639ctVNwzMoTN/VMunW7SXYA6bSAfe';
+let binId  = '67b838acc3097a1dd52e62c3';
+
+// ── INIT ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  showApp();
+  fetchTemplates();
+});
+
+// ── SETUP ─────────────────────────────────────────────
+async function connectBin() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { showSetupError('Please enter your Master Key.'); return; }
+
+  const btn = document.getElementById('connect-btn');
+  btn.innerHTML = '<div class="spinner"></div> Connecting…';
+  btn.disabled = true;
+
+  try {
+    const savedBin = localStorage.getItem(LS_BIN);
+    // Try to create a new bin or use existing
+    let bid = savedBin;
+    if (!bid) {
+      bid = await createBin(key);
+    } else {
+      // Validate existing bin with new key
+      const ok = await validateBin(key, bid);
+      if (!ok) bid = await createBin(key);
+    }
+    apiKey = key;
+    binId  = bid;
+    localStorage.setItem(LS_KEY, key);
+    localStorage.setItem(LS_BIN, bid);
+    showApp();
+    await fetchTemplates();
+  } catch(e) {
+    showSetupError('Could not connect. Check your Master Key and try again.');
+    btn.innerHTML = 'Connect &amp; Start';
+    btn.disabled = false;
+  }
+}
+
+async function createBin(key) {
+  const res = await fetch(`${JSONBIN_BASE}/b`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'TemplateFinder'},
+    body: JSON.stringify({ templates:[] })
+  });
+  if (!res.ok) throw new Error('Create failed');
+  const data = await res.json();
+  return data.metadata.id;
+}
+
+async function validateBin(key, bid) {
+  try {
+    const res = await fetch(`${JSONBIN_BASE}/b/${bid}/latest`, {
+      headers:{'X-Master-Key':key}
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
+function showSetupError(msg) {
+  const el = document.getElementById('setup-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display   = 'block';
+}
+
+// ── CLOUD SYNC ────────────────────────────────────────
+function setSyncStatus(state) {
+  const dot   = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  dot.className = 'sync-dot ' + state;
+  label.textContent = state === 'ok' ? 'Synced' : state === 'syncing' ? 'Syncing…' : 'Sync error';
+}
+
+async function fetchTemplates() {
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch(`${JSONBIN_BASE}/b/${binId}/latest`, {
+      headers:{'X-Master-Key':apiKey}
+    });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    templates = data.record.templates || [];
+    setSyncStatus('ok');
+  } catch {
+    setSyncStatus('err');
+    showToast('Could not load templates. Check your connection.','error');
+  }
+  document.getElementById('loading-state').style.display = 'none';
+  render();
+}
+
+async function pushTemplates() {
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch(`${JSONBIN_BASE}/b/${binId}`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':apiKey},
+      body: JSON.stringify({ templates })
+    });
+    if (!res.ok) throw new Error();
+    setSyncStatus('ok');
+  } catch {
+    setSyncStatus('err');
+    showToast('Sync failed — changes may not be saved.','error');
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────
+function render() {
+  updateBadge();
+  renderCatPills();
+  renderGrid();
+}
+
+function updateBadge() {
+  document.getElementById('count-badge').textContent = templates.length + ' template' + (templates.length!==1?'s':'');
+}
+
+function getCategories() {
+  return ['All',...[...new Set(templates.map(t=>t.category).filter(Boolean))].sort()];
+}
+
+function renderCatPills() {
+  const cats = getCategories();
+  const c = document.getElementById('cat-pills');
+  if (cats.length <= 1) { c.innerHTML=''; return; }
+  c.innerHTML = cats.map(cat =>
+    `<button class="cat-pill${cat===activeCategory?' active':''}" onclick="setCategory('${esc(cat)}')">${escH(cat)}</button>`
+  ).join('');
+}
+
+function renderGrid() {
+  const filtered = templates.filter(t => {
+    const matchCat = activeCategory==='All' || t.category===activeCategory;
+    const q = searchQuery.toLowerCase();
+    const matchSearch = !q || (t.name||'').toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
+    return matchCat && matchSearch;
+  });
+  const grid  = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  if (filtered.length===0) {
+    grid.innerHTML=''; empty.style.display='block';
+    document.getElementById('empty-msg').textContent = templates.length===0
+      ? 'No templates yet. Add your first one!'
+      : 'No templates match your search.';
+  } else {
+    empty.style.display='none';
+    grid.innerHTML = filtered.map(t=>`
+      <div class="tmpl-card" onclick="openUrl('${esc(t.url)}')">
+        <div class="card-top">
+          <span class="cat-badge">${escH(t.category)}</span>
+          <div class="card-actions">
+            <button class="icon-btn" title="Edit" onclick="event.stopPropagation();openForm('${esc(t.id)}')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="icon-btn" title="Delete" onclick="event.stopPropagation();openDelete('${esc(t.id)}')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="card-mid">
+          <div class="card-name">${escH(t.name||'')}</div>
+          <div class="card-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+        </div>
+        <div class="card-url">${escH(t.url)}</div>
+      </div>`).join('');
+  }
+}
+
+// ── ACTIONS ───────────────────────────────────────────
+function setCategory(cat){ activeCategory=cat; renderCatPills(); renderGrid(); }
+
+function onSearch(val){
+  searchQuery=val;
+  document.getElementById('search-clear').style.display=val?'block':'none';
+  renderGrid();
+}
+function clearSearch(){ document.getElementById('search-input').value=''; onSearch(''); }
+
+function openUrl(url){
+  let href=url;
+  if(!/^https?:\/\//i.test(href)) href='https://'+href;
+  const a=document.createElement('a'); a.href=href; a.target='_blank'; a.rel='noopener noreferrer';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ── FORM ──────────────────────────────────────────────
+function openForm(id){
+  editingId=id||null;
+  const t=id?templates.find(x=>x.id===id):null;
+  document.getElementById('f-name').value     = t?t.name:'';
+  document.getElementById('f-category').value = t?t.category:'';
+  document.getElementById('f-url').value      = t?t.url:'';
+  document.getElementById('form-title').textContent  = id?'Edit Template':'Add Template';
+  document.getElementById('submit-btn').textContent  = id?'Save Changes':'Add Template';
+  setFormError('');
+  const cats=[...new Set(templates.map(x=>x.category).filter(Boolean))].sort();
+  document.getElementById('cat-dl').innerHTML=cats.map(c=>`<option value="${escH(c)}">`).join('');
+  document.getElementById('form-overlay').style.display='flex';
+}
+function closeForm(){ document.getElementById('form-overlay').style.display='none'; editingId=null; }
+function setFormError(msg){
+  const el=document.getElementById('form-error');
+  el.textContent=msg; el.style.display=msg?'block':'none';
+}
+async function handleSubmit(){
+  const name     = document.getElementById('f-name').value.trim();
+  const category = document.getElementById('f-category').value.trim();
+  const url      = document.getElementById('f-url').value.trim();
+  if(!category){ setFormError('Category is required.'); return; }
+  if(!url)     { setFormError('URL / link is required.'); return; }
+  const btn = document.getElementById('submit-btn');
+  btn.innerHTML='<div class="spinner"></div> Saving…'; btn.disabled=true;
+  if(editingId){
+    templates=templates.map(t=>t.id===editingId?{...t,name,category,url}:t);
+  } else {
+    templates.unshift({id:Date.now().toString(),name,category,url,createdAt:new Date().toISOString()});
+  }
+  await pushTemplates();
+  render();
+  closeForm();
+  showToast(editingId?'Template updated!':'Template added!');
+  btn.textContent=editingId?'Save Changes':'Add Template'; btn.disabled=false;
+}
+
+// ── DELETE ────────────────────────────────────────────
+function openDelete(id){ deleteTargetId=id; document.getElementById('del-overlay').style.display='flex'; }
+function closeDelete(){ document.getElementById('del-overlay').style.display='none'; deleteTargetId=null; }
+async function confirmDelete(){
+  templates=templates.filter(t=>t.id!==deleteTargetId);
+  await pushTemplates();
+  render(); closeDelete();
+  showToast('Template removed.','info');
+}
+
+// ── SETTINGS ──────────────────────────────────────────
+function showSettings(){
+  document.getElementById('s-apikey').value=apiKey;
+  document.getElementById('settings-overlay').style.display='flex';
+}
+function closeSettings(){ document.getElementById('settings-overlay').style.display='none'; }
+async function saveSettings(){
+  const key=document.getElementById('s-apikey').value.trim();
+  if(!key){ showToast('Please enter a valid key.','error'); return; }
+  localStorage.removeItem(LS_BIN);
+  apiKey=key; binId='';
+  localStorage.setItem(LS_KEY,key);
+  closeSettings();
+  try{
+    binId=await createBin(key);
+    localStorage.setItem(LS_BIN,binId);
+    showToast('Reconnected! Templates will sync to new account.');
+    await fetchTemplates();
+  } catch {
+    showToast('Could not connect with new key.','error');
+  }
+}
+function disconnectAccount(){
+  if(!confirm('This will remove your API key and bin ID from this browser. Your cloud data is not deleted.')) return;
+  localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_BIN);
+  location.reload();
+}
+
+// ── TOAST ─────────────────────────────────────────────
+function showToast(msg,type){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.background=type==='error'?'#c0392b':type==='info'?'#2a2d35':'#1a7a3a';
+  el.style.display='block';
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.style.display='none',3000);
+}
+
+// ── HELPERS ───────────────────────────────────────────
+function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+</script>
+</body>
+</html>
